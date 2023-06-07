@@ -1,4 +1,4 @@
-hostname "SWAN-SL02"
+hostname "SWAN-SL02"  teste
 
 ########################################
 # Configurar Banner
