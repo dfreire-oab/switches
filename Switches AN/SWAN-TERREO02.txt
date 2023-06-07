@@ -1,0 +1,189 @@
+
+########################################
+# Verificar versão do Sistema Operacional
+########################################
+show version
+
+########################################
+# VLANs
+########################################
+vlan 1
+    exit
+vlan 10
+    name "Principal"
+    exit
+vlan 20
+    name "WIFI_GUEST"
+    exit
+interface vlan 1
+    ip address none
+    no ip address
+    exit
+interface vlan 10
+    ip address 172.20.3.37 /16
+    exit
+
+
+
+########################################
+# Configurar Banner
+########################################
+banner motd "
+********************************************************
+*                                                      *
+*                      WARNING                         *
+*                                                      *
+* This is an OAB SP device and can only be accessed by *
+*               authorized personnel.                  *
+*                                                      *
+*                       TI&TD                          *
+********************************************************
+"
+
+########################################
+Management ! Enter config mode and 
+setup identification and ssh access
+########################################
+enable
+config
+
+
+hostname "SWAN-TERREO02"
+
+username admin password 1nfrxxx privilege 15
+(1=somente leitura, 15=privilegiado)
+OBS: não salvar antes de testar a senha
+
+enable password 
+
+
+
+########################################
+Criar chaves / Habilitar SSH / Desativar telnet
+########################################
+crypto key generate dsa
+    y
+crypto key generate rsa
+    y
+ip ssh server
+ip telnet server disable
+
+
+########################################
+Configurar DNS
+########################################
+ip domain-name oabsp.org.br
+ip name-server 172.20.0.75
+ip name-server 172.20.0.76
+ip domain-lookup
+
+########################################
+Configurar SNTP
+########################################
+sntp unicast client enable
+sntp server 172.20.0.75
+sntp server 172.20.0.76
+clock timezone -3
+
+########################################
+# Enable Spanning Tree
+########################################
+spanning-tree
+spanning-tree mode rstp
+spanning-tree priority 61440
+
+
+########################################
+# SNMP
+########################################
+snmp-server community "monitoramentoab" ro
+snmp contact 
+snmp location 
+
+
+########################################
+# Port configuration
+########################################
+no iscsi enable
+! DCB not in use - disabling DCB
+no dcb enable
+! Flowcontrol not in use - disabling rx
+flowcontrol receive off
+    y
+system jumbo mtu 1518
+
+
+########################################
+# Verificar quais portas estarão VLAN 10
+# Exemplo: porta 1 a 44
+########################################
+interface range Gi 1/0/1-44
+    description "Acesso"
+    switchport mode access
+    switchport access vlan 10
+    spanning-tree auto-portfast
+    no shutdown
+    exit
+
+########################################
+# Verificar quais portas estarão VLAN 20
+# Exemplo: porta 45 a 48
+########################################
+interface range Gi 1/0/45-48
+    description "Acesso"
+    switchport mode access
+    switchport access vlan 20
+    spanning-tree auto-portfast
+    no shutdown
+    exit
+
+
+
+########################################
+# Implantar novo switch 
+# Distribuição S4128F-ON (dritr01 e distr02)
+########################################
+(Esta é a configuração do Port-Channel)
+interface port-channel x
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 10,20
+ vlt-port-channel x
+ 
+ (Esta é a configuração da porta)
+ interface ethernet 1/1/x   
+ description "SWAN-andar"
+ no shutdown
+ channel-group x mode active
+ no switchport
+ flowcontrol receive off
+ flowcontrol transmit off
+ 
+
+
+
+########################################
+# Configuração das portas SFPs
+########################################
+interface port-channel 1
+switchport mode trunk
+switchport trunk allowed vlan 1,10,20
+exit
+
+interface Te1/0/1
+              description "UP-DISTR01"
+              no shutdown
+              channel-group 1 mode active
+              no switchport
+              flowcontrol receive off
+
+interface Te1/0/2
+              description "UP-DISTR02"
+              no shutdown
+              channel-group 1 mode active
+              no switchport
+              flowcontrol receive off       
+
+
+
