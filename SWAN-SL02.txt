@@ -1,0 +1,156 @@
+hostname "SWAN-SL02"
+
+########################################
+# Configurar Banner
+########################################
+banner motd "
+********************************************************
+*                                                      *
+*                      WARNING                         *
+*                                                      *
+* This is an OAB SP device and can only be accessed by *
+*               authorized personnel.                  *
+*                                                      *
+*                       TI&TD                          *
+********************************************************
+"
+
+
+
+########################################
+# Verificar versão do Sistema Operacional
+########################################
+show version
+
+########################################
+# VLANs
+########################################
+vlan 1
+    exit
+vlan 10
+    name "Principal"
+    exit
+vlan 20
+    name "WIFI_GUEST"
+    exit
+interface vlan 1
+    ip address none
+    no ip address
+    exit
+interface vlan 10
+    ip address 172.20.3.38 /16
+    exit
+
+########################################
+Configurar DNS
+########################################
+ip domain-name oabsp.org.br
+ip name-server 172.20.0.75
+ip name-server 172.20.0.76
+ip domain-lookup
+
+########################################
+Configurar SNTP
+########################################
+sntp unicast client enable
+sntp server 172.20.0.75
+sntp server 172.20.0.76
+clock timezone -3
+
+########################################
+# Enable Spanning Tree
+########################################
+spanning-tree
+spanning-tree mode rstp
+spanning-tree priority 61440
+
+########################################
+# SNMP
+########################################
+snmp-server group oabsp v2 read Default
+
+
+########################################
+# Port configuration
+########################################
+no iscsi enable
+! DCB not in use - disabling DCB
+no dcb enable
+! Flowcontrol not in use - disabling rx
+flowcontrol receive off
+    y
+system jumbo mtu 1518
+
+
+########################################
+# Verificar quais portas estarão VLAN 10
+# Exemplo: porta 1 a 20
+########################################
+interface range Gi 1/0/1-20
+    description "Acesso"
+    switchport mode access
+    switchport access vlan 10
+    spanning-tree auto-portfast
+    no shutdown
+    exit
+
+########################################
+# Verificar quais portas estarão VLAN 20
+# Exemplo: porta 20 a 24
+########################################
+interface range Gi 1/0/21-24
+    description "Acesso"
+    switchport mode access
+    switchport access vlan 20
+    spanning-tree auto-portfast
+    no shutdown
+    exit
+
+
+Configurações das portas
+
+interface port-channel 1
+switchport mode trunk
+switchport trunk allowed vlan 1,10,20
+exit
+
+
+interface Te1/0/1
+description "UP-DISTR01"
+no shutdown
+channel-group 1 mode active
+no switchport
+flowcontrol receive off
+
+interface Te1/0/2
+description "UP-DISTR02"
+no shutdown
+channel-group 1 mode active
+no switchport
+
+
+
+Implantar novo switch 
+- Distribuição S4128F-ON (dritr01 e distr02)
+
+(Esta é a configuração do Port-Channel)
+interface port-channel16
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 10,20
+ vlt-port-channel 16
+
+ (Esta é a configuração da porta)
+ interface ethernet 1/1/16   
+ description "SWAN-SL02"
+ no shutdown
+ channel-group 16 mode active
+ no switchport
+ flowcontrol receive off
+ flowcontrol transmit off
+
+
+
+
+
